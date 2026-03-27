@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Job #{{ job.id }} - The Crucible{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('dashboard') }}" class="back-link">&larr; Back to Dashboard</a>
+
+<div class="job-header">
+    <h1>Job #{{ job.id }}</h1>
+    <span class="badge badge-{{ job.status }} badge-lg">{{ job.status | replace('_', ' ') | title }}</span>
+</div>
+
+<div class="job-grid">
+    <div class="card">
+        <h3>Customer</h3>
+        <p><strong>{{ job.customer_name }}</strong></p>
+        <p>{{ job.customer_phone }}</p>
+        {% if job.customer_email %}<p>{{ job.customer_email }}</p>{% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Device</h3>
+        <p><strong>{{ job.device_type }}</strong></p>
+        <p>{{ job.device_brand }} {{ job.device_model }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Issue</h3>
+        <p>{{ job.issue_description }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Costs</h3>
+        <p>Estimated: {{ "$%.2f" | format(job.estimated_cost) if job.estimated_cost else "TBD" }}</p>
+        <p>Final: {{ "$%.2f" | format(job.final_cost) if job.final_cost else "TBD" }}</p>
+    </div>
+</div>
+
+{% if job.notes %}
+<div class="card">
+    <h3>Notes</h3>
+    <p>{{ job.notes }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>Update Status</h3>
+    <form method="POST" action="{{ url_for('update_status', job_id=job.id) }}" class="status-form">
+        <select name="status" class="input">
+            {% for status in statuses %}
+            <option value="{{ status }}" {% if status == job.status %}selected{% endif %}>
+                {{ status | replace('_', ' ') | title }}
+            </option>
+            {% endfor %}
+        </select>
+        <input type="text" name="note" placeholder="Optional note..." class="input">
+        <button type="submit" class="btn btn-primary">Update</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Status History</h3>
+    {% if history %}
+    <table class="history-table">
+        <thead>
+            <tr><th>From</th><th>To</th><th>Note</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+            {% for h in history %}
+            <tr>
+                <td>{{ (h.old_status or '-') | replace('_', ' ') | title }}</td>
+                <td><span class="badge badge-{{ h.new_status }}">{{ h.new_status | replace('_', ' ') | title }}</span></td>
+                <td>{{ h.note or '-' }}</td>
+                <td><small>{{ h.changed_at }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No status changes yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,307 @@
+:root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --accent: #ff6b35;
+    --accent-hover: #ff8555;
+    --success: #2ecc71;
+    --error: #e74c3c;
+    --radius: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────── */
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-brand {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-left: 1.5rem;
+    transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--text); }
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+    flex: 1;
+}
+
+/* ── Flash Messages ──────────────────────────────────────────────── */
+
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+.flash-success { background: rgba(46, 204, 113, 0.15); border: 1px solid var(--success); }
+.flash-error { background: rgba(231, 76, 60, 0.15); border: 1px solid var(--error); }
+
+/* ── Dashboard ───────────────────────────────────────────────────── */
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.status-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.job-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.job-table th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.job-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.job-row { cursor: pointer; transition: background 0.2s; }
+.job-row:hover { background: var(--surface); }
+
+.issue-cell { max-width: 250px; }
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+}
+
+.empty-state h2 { margin-bottom: 0.5rem; color: var(--text); }
+.empty-state .btn { margin-top: 1rem; }
+
+/* ── Badges ──────────────────────────────────────────────────────── */
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.badge-lg { font-size: 0.9rem; padding: 0.4rem 1rem; }
+
+.badge-intake { background: #3498db22; color: #3498db; }
+.badge-diagnosing { background: #9b59b622; color: #9b59b6; }
+.badge-waiting_for_parts { background: #f39c1222; color: #f39c12; }
+.badge-in_repair { background: #e67e2222; color: #e67e22; }
+.badge-testing { background: #1abc9c22; color: #1abc9c; }
+.badge-ready_for_pickup { background: #2ecc7122; color: #2ecc71; }
+.badge-completed { background: #27ae6022; color: #27ae60; }
+.badge-cancelled { background: #e74c3c22; color: #e74c3c; }
+
+/* ── Cards ────────────────────────────────────────────────────────── */
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.card h3 {
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.job-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Job Detail ──────────────────────────────────────────────────── */
+
+.back-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+.back-link:hover { color: var(--text); }
+
+.job-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-form {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.history-table th, .history-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.history-table th {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+/* ── Forms ────────────────────────────────────────────────────────── */
+
+.booking-form { max-width: 600px; }
+
+.form-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section h3 {
+    color: var(--accent);
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.25rem;
+    margin-top: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+textarea.input { resize: vertical; }
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+
+.btn {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.btn:hover { border-color: var(--text-muted); }
+
+.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-lg { padding: 0.8rem 2rem; font-size: 1.1rem; margin-top: 1rem; }
+
+/* ── Confirmation ────────────────────────────────────────────────── */
+
+.confirmation { text-align: center; padding: 2rem 0; }
+.confirmation h1 { margin-bottom: 1.5rem; }
+.confirmation-card { display: inline-block; text-align: left; min-width: 300px; }
+.job-number { font-size: 2rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
+.status-note { margin-top: 1rem; }
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .navbar { padding: 0.75rem 1rem; }
+    .container { padding: 1rem; }
+    .dashboard-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+    .job-table { font-size: 0.85rem; }
+    .status-form { flex-direction: column; }
+    .status-form .input { width: 100%; }
+}

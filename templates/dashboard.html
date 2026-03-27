@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - The Crucible{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Repair Pipeline</h1>
+    <a href="{{ url_for('book_repair') }}" class="btn btn-primary">+ New Job</a>
+</div>
+
+{% if jobs %}
+<div class="status-legend">
+    {% for status in statuses %}
+    <span class="badge badge-{{ status }}">{{ status | replace('_', ' ') | title }}</span>
+    {% endfor %}
+</div>
+
+<table class="job-table">
+    <thead>
+        <tr>
+            <th>Job #</th>
+            <th>Customer</th>
+            <th>Device</th>
+            <th>Issue</th>
+            <th>Status</th>
+            <th>Updated</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs %}
+        <tr class="job-row" onclick="window.location='{{ url_for('job_detail', job_id=job.id) }}'">
+            <td><strong>#{{ job.id }}</strong></td>
+            <td>{{ job.customer_name }}<br><small>{{ job.customer_phone }}</small></td>
+            <td>{{ job.device_brand }} {{ job.device_model }}<br><small>{{ job.device_type }}</small></td>
+            <td class="issue-cell">{{ job.issue_description[:80] }}{% if job.issue_description|length > 80 %}...{% endif %}</td>
+            <td><span class="badge badge-{{ job.status }}">{{ job.status | replace('_', ' ') | title }}</span></td>
+            <td><small>{{ job.updated_at }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No repairs in the pipeline yet</h2>
+    <p>Book the first repair job to get started.</p>
+    <a href="{{ url_for('book_repair') }}" class="btn btn-primary">Book a Repair</a>
+</div>
+{% endif %}
+{% endblock %}

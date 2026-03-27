@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Booking Confirmed - The Crucible{% endblock %}
+
+{% block content %}
+<div class="confirmation">
+    <h1>Repair Booked!</h1>
+    <div class="card confirmation-card">
+        <p class="job-number">Job #{{ job.id }}</p>
+        <p><strong>{{ job.customer_name }}</strong></p>
+        <p>{{ job.device_type }} — {{ job.device_brand }} {{ job.device_model }}</p>
+        <p>{{ job.issue_description }}</p>
+        <p class="status-note">Status: <span class="badge badge-intake">Intake</span></p>
+        <p><small>We'll notify you by SMS when your device status changes.</small></p>
+    </div>
+    <a href="{{ url_for('book_repair') }}" class="btn">Book Another Repair</a>
+</div>
+{% endblock %}

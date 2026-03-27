@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Book a Repair - The Crucible{% endblock %}
+
+{% block content %}
+<h1>Book a Repair</h1>
+
+<form method="POST" class="booking-form">
+    <div class="form-section">
+        <h3>Your Info</h3>
+        <label>Name *</label>
+        <input type="text" name="name" required class="input">
+        <label>Phone *</label>
+        <input type="tel" name="phone" required class="input">
+        <label>Email</label>
+        <input type="email" name="email" class="input">
+    </div>
+
+    <div class="form-section">
+        <h3>Device Info</h3>
+        <label>Device Type *</label>
+        <select name="device_type" required class="input">
+            <option value="">Select...</option>
+            <option value="Phone">Phone</option>
+            <option value="Tablet">Tablet</option>
+            <option value="Laptop">Laptop</option>
+            <option value="Desktop">Desktop</option>
+            <option value="Console">Console</option>
+            <option value="Other">Other</option>
+        </select>
+        <label>Brand</label>
+        <input type="text" name="device_brand" placeholder="e.g. Apple, Samsung..." class="input">
+        <label>Model</label>
+        <input type="text" name="device_model" placeholder="e.g. iPhone 15, Galaxy S24..." class="input">
+    </div>
+
+    <div class="form-section">
+        <h3>What's Wrong?</h3>
+        <label>Describe the issue *</label>
+        <textarea name="issue_description" required rows="4" class="input" placeholder="Cracked screen, won't charge, water damage..."></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg">Submit Repair Request</button>
+</form>
+{% endblock %}
