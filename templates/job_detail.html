@@ -79,4 +79,25 @@
     <p>No status changes yet.</p>
     {% endif %}
 </div>
+
+{% if sms_history %}
+<div class="card">
+    <h3>SMS Notifications</h3>
+    <table class="history-table">
+        <thead>
+            <tr><th>To</th><th>Message</th><th>Status</th><th>Sent</th></tr>
+        </thead>
+        <tbody>
+            {% for sms in sms_history %}
+            <tr>
+                <td>{{ sms.phone }}</td>
+                <td class="issue-cell">{{ sms.message[:80] }}{% if sms.message|length > 80 %}...{% endif %}</td>
+                <td><span class="badge badge-{{ 'completed' if sms.status == 'sent' else 'cancelled' }}">{{ sms.status }}</span></td>
+                <td><small>{{ sms.sent_at }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 {% endblock %}

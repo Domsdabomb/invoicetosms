@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from config import Config
 from models.database import get_db, close_db, init_db, VALID_STATUSES
+from services.sms import notify_customer
 from datetime import datetime
 
 
@@ -47,8 +48,12 @@ def create_app():
             "SELECT * FROM status_history WHERE job_id = ? ORDER BY changed_at DESC",
             (job_id,),
         ).fetchall()
+        sms_history = db.execute(
+            "SELECT * FROM sms_log WHERE job_id = ? ORDER BY sent_at DESC",
+            (job_id,),
+        ).fetchall()
         return render_template(
-            "job_detail.html", job=job, history=history, statuses=VALID_STATUSES
+            "job_detail.html", job=job, history=history, sms_history=sms_history, statuses=VALID_STATUSES
         )
 
     @app.route("/job/<int:job_id>/update-status", methods=["POST"])
@@ -61,24 +66,71 @@ def create_app():
             return redirect(url_for("job_detail", job_id=job_id))
 
         db = get_db()
-        current = db.execute(
-            "SELECT status FROM repair_jobs WHERE id = ?", (job_id,)
+        job = db.execute(
+            """
+            SELECT r.*, c.name AS customer_name, c.phone AS customer_phone
+            FROM repair_jobs r
+            JOIN customers c ON r.customer_id = c.id
+            WHERE r.id = ?
+            """,
+            (job_id,),
         ).fetchone()
-        if not current:
+        if not job:
             flash("Job not found.", "error")
             return redirect(url_for("dashboard"))
 
+        old_status = job["status"]
         db.execute(
             "UPDATE repair_jobs SET status = ?, updated_at = ? WHERE id = ?",
             (new_status, datetime.now(), job_id),
         )
         db.execute(
             "INSERT INTO status_history (job_id, old_status, new_status, note) VALUES (?, ?, ?, ?)",
-            (job_id, current["status"], new_status, note),
+            (job_id, old_status, new_status, note),
         )
         db.commit()
-        flash(f"Status updated to {new_status.replace('_', ' ').title()}.", "success")
+
+        # ── SMS Notification ─────────────────────────────────────
+        result = notify_customer(
+            job_id=job_id,
+            new_status=new_status,
+            customer_name=job["customer_name"],
+            customer_phone=job["customer_phone"],
+            device_type=job["device_type"],
+            device_brand=job["device_brand"],
+            device_model=job["device_model"],
+        )
+        if result:
+            sms_status = "sent" if result["sent"] else "failed"
+            db.execute(
+                "INSERT INTO sms_log (job_id, phone, message, status) VALUES (?, ?, ?, ?)",
+                (job_id, result["phone"], result["message"], sms_status),
+            )
+            db.commit()
+            if result["sent"]:
+                flash(f"Status updated & SMS sent to {result['phone']}.", "success")
+            else:
+                flash(f"Status updated to {new_status.replace('_', ' ').title()}. SMS notification pending (Twilio not configured).", "success")
+        else:
+            flash(f"Status updated to {new_status.replace('_', ' ').title()}.", "success")
+
         return redirect(url_for("job_detail", job_id=job_id))
+
+    # ── SMS Log ───────────────────────────────────────────────────────
+
+    @app.route("/sms-log")
+    def sms_log():
+        db = get_db()
+        logs = db.execute(
+            """
+            SELECT s.*, r.device_type, c.name AS customer_name
+            FROM sms_log s
+            JOIN repair_jobs r ON s.job_id = r.id
+            JOIN customers c ON r.customer_id = c.id
+            ORDER BY s.sent_at DESC
+            """
+        ).fetchall()
+        return render_template("sms_log.html", logs=logs)
 
     # ── Customer Booking ─────────────────────────────────────────────
 

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}SMS Log - The Crucible{% endblock %}
+
+{% block content %}
+<h1>SMS Notification Log</h1>
+
+{% if logs %}
+<table class="job-table">
+    <thead>
+        <tr>
+            <th>Job #</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Sent</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr class="job-row" onclick="window.location='{{ url_for('job_detail', job_id=log.job_id) }}'">
+            <td><strong>#{{ log.job_id }}</strong></td>
+            <td>{{ log.customer_name }}</td>
+            <td>{{ log.phone }}</td>
+            <td class="issue-cell">{{ log.message[:60] }}{% if log.message|length > 60 %}...{% endif %}</td>
+            <td><span class="badge badge-{{ 'completed' if log.status == 'sent' else 'cancelled' }}">{{ log.status }}</span></td>
+            <td><small>{{ log.sent_at }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No SMS notifications sent yet</h2>
+    <p>Notifications are sent automatically when a job status changes.</p>
+</div>
+{% endif %}
+{% endblock %}

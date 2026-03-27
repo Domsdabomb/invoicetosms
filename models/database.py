@@ -35,6 +35,16 @@ CREATE TABLE IF NOT EXISTS status_history (
     note TEXT,
     FOREIGN KEY (job_id) REFERENCES repair_jobs(id)
 );
+
+CREATE TABLE IF NOT EXISTS sms_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL,
+    phone TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (job_id) REFERENCES repair_jobs(id)
+);
 """
 
 VALID_STATUSES = [
