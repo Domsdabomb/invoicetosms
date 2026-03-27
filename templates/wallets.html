@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Crucible Coin Wallets - The Crucible{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Crucible Coin Wallets</h1>
+    <span class="coin-rate">1 Coin = ${{ "%.2f" | format(coin_value) }} CAD</span>
+</div>
+
+{% if wallets %}
+<table class="job-table">
+    <thead>
+        <tr>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Balance</th>
+            <th>Value (CAD)</th>
+            <th>Last Updated</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for w in wallets %}
+        <tr class="job-row" onclick="window.location='{{ url_for('wallet_detail', customer_id=w.customer_id) }}'">
+            <td><strong>{{ w.customer_name }}</strong></td>
+            <td>{{ w.customer_phone }}</td>
+            <td><span class="coin-balance">{{ w.balance | int }} Coins</span></td>
+            <td>${{ "%.2f" | format(w.balance * coin_value) }}</td>
+            <td><small>{{ w.updated_at }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No wallets yet</h2>
+    <p>Customers earn Crucible Coins when their repairs are completed.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Wallet: {{ customer.name }} - The Crucible{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('wallets') }}" class="back-link">&larr; Back to Wallets</a>
+
+<div class="job-header">
+    <h1>{{ customer.name }}'s Wallet</h1>
+</div>
+
+<div class="job-grid">
+    <div class="card">
+        <h3>Balance</h3>
+        <p class="coin-balance-lg">{{ wallet.balance | int }} Crucible Coins</p>
+        <p class="coin-value">${{ "%.2f" | format(wallet.balance * coin_value) }} CAD</p>
+    </div>
+
+    <div class="card">
+        <h3>Customer Info</h3>
+        <p><strong>{{ customer.name }}</strong></p>
+        <p>{{ customer.phone }}</p>
+        {% if customer.email %}<p>{{ customer.email }}</p>{% endif %}
+    </div>
+
+    <div class="card">
+        <h3>How Coins Are Earned</h3>
+        <p>5 coins per completed repair</p>
+        <p>1 coin per $10 spent</p>
+        <p>10 coins for referring a friend</p>
+        <p><small>Max 25% of a bill payable in coins</small></p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Manual Adjustment</h3>
+    <form method="POST" action="{{ url_for('wallet_adjust', customer_id=customer.id) }}" class="status-form">
+        <select name="action" class="input" style="max-width: 140px;">
+            <option value="credit">+ Credit</option>
+            <option value="debit">- Debit</option>
+        </select>
+        <input type="number" name="amount" min="1" step="1" placeholder="Amount" required class="input" style="max-width: 120px;">
+        <input type="text" name="reason" placeholder="Reason..." class="input">
+        <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Transaction History</h3>
+    {% if transactions %}
+    <table class="history-table">
+        <thead>
+            <tr><th>Type</th><th>Amount</th><th>Balance After</th><th>Reason</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td><span class="badge badge-{{ 'completed' if t.type == 'credit' else 'cancelled' }}">{{ t.type }}</span></td>
+                <td>{{ "+" if t.type == "credit" else "-" }}{{ t.amount | int }}</td>
+                <td>{{ t.balance_after | int }}</td>
+                <td>{{ t.reason or '-' }}</td>
+                <td><small>{{ t.created_at }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No transactions yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

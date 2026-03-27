@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from config import Config
 from models.database import get_db, close_db, init_db, VALID_STATUSES
 from services.sms import notify_customer
+from services.wallet import get_wallet, get_balance, add_coins, spend_coins, reward_completed_job, get_transaction_history, calc_max_coin_discount, COIN_VALUE_CAD
 from datetime import datetime
 
 
@@ -52,8 +53,10 @@ def create_app():
             "SELECT * FROM sms_log WHERE job_id = ? ORDER BY sent_at DESC",
             (job_id,),
         ).fetchall()
+        wallet_balance = get_balance(job["customer_id"])
         return render_template(
-            "job_detail.html", job=job, history=history, sms_history=sms_history, statuses=VALID_STATUSES
+            "job_detail.html", job=job, history=history, sms_history=sms_history,
+            statuses=VALID_STATUSES, wallet_balance=wallet_balance,
         )
 
     @app.route("/job/<int:job_id>/update-status", methods=["POST"])
@@ -114,6 +117,12 @@ def create_app():
         else:
             flash(f"Status updated to {new_status.replace('_', ' ').title()}.", "success")
 
+        # ── Crucible Coin Reward ─────────────────────────────────
+        if new_status == "completed":
+            coins = reward_completed_job(job_id)
+            if coins > 0:
+                flash(f"Customer earned {coins} Crucible Coins!", "success")
+
         return redirect(url_for("job_detail", job_id=job_id))
 
     # ── SMS Log ───────────────────────────────────────────────────────
@@ -131,6 +140,71 @@ def create_app():
             """
         ).fetchall()
         return render_template("sms_log.html", logs=logs)
+
+    # ── Wallet / Crucible Coin ───────────────────────────────────────
+
+    @app.route("/wallets")
+    def wallets():
+        db = get_db()
+        wallet_list = db.execute(
+            """
+            SELECT w.*, c.name AS customer_name, c.phone AS customer_phone
+            FROM wallets w
+            JOIN customers c ON w.customer_id = c.id
+            ORDER BY w.balance DESC
+            """
+        ).fetchall()
+        return render_template("wallets.html", wallets=wallet_list, coin_value=COIN_VALUE_CAD)
+
+    @app.route("/wallet/<int:customer_id>")
+    def wallet_detail(customer_id):
+        db = get_db()
+        customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Customer not found.", "error")
+            return redirect(url_for("wallets"))
+
+        wallet = get_wallet(customer_id)
+        transactions = get_transaction_history(customer_id)
+        return render_template(
+            "wallet_detail.html",
+            customer=customer,
+            wallet=wallet,
+            transactions=transactions,
+            coin_value=COIN_VALUE_CAD,
+        )
+
+    @app.route("/wallet/<int:customer_id>/adjust", methods=["POST"])
+    def wallet_adjust(customer_id):
+        action = request.form.get("action")
+        amount = request.form.get("amount", "0")
+        reason = request.form.get("reason", "").strip()
+
+        try:
+            amount = float(amount)
+        except ValueError:
+            flash("Invalid amount.", "error")
+            return redirect(url_for("wallet_detail", customer_id=customer_id))
+
+        if amount <= 0:
+            flash("Amount must be positive.", "error")
+            return redirect(url_for("wallet_detail", customer_id=customer_id))
+
+        if not reason:
+            reason = "Manual adjustment by admin"
+
+        if action == "credit":
+            add_coins(customer_id, amount, reason)
+            flash(f"Credited {amount:.0f} Crucible Coins.", "success")
+        elif action == "debit":
+            if not spend_coins(customer_id, amount, reason):
+                flash("Insufficient balance.", "error")
+                return redirect(url_for("wallet_detail", customer_id=customer_id))
+            flash(f"Debited {amount:.0f} Crucible Coins.", "success")
+        else:
+            flash("Invalid action.", "error")
+
+        return redirect(url_for("wallet_detail", customer_id=customer_id))
 
     # ── Customer Booking ─────────────────────────────────────────────
 

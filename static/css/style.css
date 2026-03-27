@@ -207,6 +207,13 @@ body {
     text-transform: uppercase;
 }
 
+/* ── Wallet / Crucible Coin ───────────────────────────────────────── */
+
+.coin-balance { color: var(--accent); font-weight: 600; }
+.coin-balance-lg { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
+.coin-value { font-size: 1.1rem; color: var(--text-muted); margin-top: 0.25rem; }
+.coin-rate { color: var(--text-muted); font-size: 0.95rem; }
+
 /* ── Forms ────────────────────────────────────────────────────────── */
 
 .booking-form { max-width: 600px; }

@@ -15,6 +15,9 @@
         <p><strong>{{ job.customer_name }}</strong></p>
         <p>{{ job.customer_phone }}</p>
         {% if job.customer_email %}<p>{{ job.customer_email }}</p>{% endif %}
+        {% if wallet_balance is not none %}
+        <p class="coin-balance">{{ wallet_balance | int }} Crucible Coins</p>
+        {% endif %}
     </div>
 
     <div class="card">
