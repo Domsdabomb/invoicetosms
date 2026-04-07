@@ -3,7 +3,7 @@ from config import Config
 from models.database import get_db, close_db, init_db, VALID_STATUSES
 from services.sms import notify_customer
 from services.wallet import get_wallet, get_balance, add_coins, spend_coins, reward_completed_job, get_transaction_history, calc_max_coin_discount, COIN_VALUE_CAD
-from services.invoice import create_invoice, mark_paid, send_invoice_sms, TAX_RATE
+from services.invoice import create_invoice, mark_paid, send_invoice_sms, preview_invoice, TAX_RATE
 from datetime import datetime
 
 
@@ -225,24 +225,6 @@ def create_app():
 
     @app.route("/job/<int:job_id>/invoice/new", methods=["GET", "POST"])
     def new_invoice(job_id):
-        db = get_db()
-        job = db.execute(
-            """
-            SELECT r.*, c.name AS customer_name, c.phone AS customer_phone
-            FROM repair_jobs r
-            JOIN customers c ON r.customer_id = c.id
-            WHERE r.id = ?
-            """,
-            (job_id,),
-        ).fetchone()
-        if not job:
-            flash("Job not found.", "error")
-            return redirect(url_for("dashboard"))
-
-        if not job["final_cost"]:
-            flash("Set a final cost on the job before creating an invoice.", "error")
-            return redirect(url_for("job_detail", job_id=job_id))
-
         if request.method == "POST":
             try:
                 coins = int(request.form.get("coins_to_apply", 0))
@@ -253,23 +235,23 @@ def create_app():
             if invoice_id:
                 flash(f"Invoice #{invoice_id} created.", "success")
                 return redirect(url_for("invoice_detail", invoice_id=invoice_id))
-            flash("Failed to create invoice.", "error")
+            flash("Set a final cost on the job before creating an invoice.", "error")
             return redirect(url_for("job_detail", job_id=job_id))
 
-        subtotal_pre_tax = job["final_cost"]
-        tax = subtotal_pre_tax * TAX_RATE
-        subtotal = subtotal_pre_tax + tax
-        max_coins = calc_max_coin_discount(subtotal, job["customer_id"])
-        balance = get_balance(job["customer_id"])
+        preview = preview_invoice(job_id)
+        if not preview:
+            flash("Job not found or final cost not set.", "error")
+            return redirect(url_for("job_detail", job_id=job_id))
+
         return render_template(
             "invoice_new.html",
-            job=job,
-            subtotal_pre_tax=subtotal_pre_tax,
-            tax=tax,
-            subtotal=subtotal,
+            job=preview["job"],
+            subtotal_pre_tax=preview["pre_tax"],
+            tax=preview["tax"],
+            subtotal=preview["subtotal"],
             tax_rate=TAX_RATE,
-            max_coins=max_coins,
-            balance=balance,
+            max_coins=preview["max_coins"],
+            balance=preview["balance"],
             coin_value=COIN_VALUE_CAD,
         )
 

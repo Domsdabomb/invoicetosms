@@ -1,7 +1,7 @@
 import logging
-from flask import current_app, url_for
+from flask import current_app
 from models.database import get_db
-from services.wallet import calc_max_coin_discount, spend_coins, COIN_VALUE_CAD
+from services.wallet import get_wallet, calc_max_coin_discount, spend_coins, COIN_VALUE_CAD
 from services.sms import send_sms
 
 log = logging.getLogger(__name__)
@@ -10,32 +10,63 @@ log = logging.getLogger(__name__)
 TAX_RATE = 0.12
 
 
-def create_invoice(job_id, coins_to_apply=0):
-    """Create an invoice for a job. Optionally apply Crucible Coins as discount."""
+def preview_invoice(job_id, coins_to_apply=0):
+    """Compute invoice totals for a job without persisting. Returns a dict or None."""
     db = get_db()
-    job = db.execute("SELECT * FROM repair_jobs WHERE id = ?", (job_id,)).fetchone()
+    job = db.execute(
+        """
+        SELECT r.*, c.name AS customer_name, c.phone AS customer_phone
+        FROM repair_jobs r
+        JOIN customers c ON r.customer_id = c.id
+        WHERE r.id = ?
+        """,
+        (job_id,),
+    ).fetchone()
     if not job or not job["final_cost"]:
         return None
 
-    customer_id = job["customer_id"]
-    subtotal_pre_tax = job["final_cost"]
-    tax = subtotal_pre_tax * TAX_RATE
-    subtotal = subtotal_pre_tax + tax
+    pre_tax = job["final_cost"]
+    tax = pre_tax * TAX_RATE
+    subtotal = pre_tax + tax
 
-    # Cap coins at the max allowable
-    max_coins = calc_max_coin_discount(subtotal, customer_id)
+    wallet = get_wallet(job["customer_id"])
+    max_coins = calc_max_coin_discount(subtotal, job["customer_id"])
     coins_applied = min(max(0, int(coins_to_apply)), max_coins)
     discount = coins_applied * COIN_VALUE_CAD
     total = max(0, subtotal - discount)
 
-    # Spend the coins from the wallet
-    if coins_applied > 0:
-        if not spend_coins(customer_id, coins_applied, f"Applied to invoice for Job #{job_id}", job_id=job_id):
-            log.warning("Failed to spend coins for invoice on job %s", job_id)
-            coins_applied = 0
-            discount = 0
-            total = subtotal
+    return {
+        "job": job,
+        "pre_tax": pre_tax,
+        "tax": tax,
+        "subtotal": subtotal,
+        "balance": wallet["balance"],
+        "max_coins": max_coins,
+        "coins_applied": coins_applied,
+        "discount": discount,
+        "total": total,
+    }
 
+
+def create_invoice(job_id, coins_to_apply=0):
+    """Create an invoice for a job. Optionally apply Crucible Coins as discount."""
+    preview = preview_invoice(job_id, coins_to_apply)
+    if not preview:
+        return None
+
+    customer_id = preview["job"]["customer_id"]
+    coins_applied = preview["coins_applied"]
+    discount = preview["discount"]
+    total = preview["total"]
+    subtotal = preview["subtotal"]
+
+    if coins_applied > 0 and not spend_coins(
+        customer_id, coins_applied, f"Applied to invoice for Job #{job_id}", job_id=job_id
+    ):
+        log.warning("Failed to spend coins for invoice on job %s", job_id)
+        coins_applied, discount, total = 0, 0, subtotal
+
+    db = get_db()
     cursor = db.execute(
         """INSERT INTO invoices (job_id, customer_id, subtotal, coins_applied, discount_amount, total)
            VALUES (?, ?, ?, ?, ?, ?)""",
@@ -54,8 +85,8 @@ def mark_paid(invoice_id):
     db.commit()
 
 
-def send_invoice_sms(invoice_id, base_url=None):
-    """Text the customer their invoice details + payment link."""
+def send_invoice_sms(invoice_id):
+    """Text the customer their invoice details."""
     db = get_db()
     invoice = db.execute(
         """
