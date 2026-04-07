@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Invoice #{{ invoice.id }} - The Crucible{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('invoices') }}" class="back-link">&larr; Back to Invoices</a>
+
+<div class="job-header">
+    <h1>Invoice #{{ invoice.id }}</h1>
+    <span class="badge badge-{{ 'completed' if invoice.status == 'paid' else 'waiting_for_parts' }} badge-lg">{{ invoice.status }}</span>
+</div>
+
+<div class="card">
+    <h3>The Crucible &mdash; British Columbia</h3>
+    <p><strong>Bill To:</strong></p>
+    <p>{{ invoice.customer_name }}</p>
+    <p>{{ invoice.customer_phone }}</p>
+    {% if invoice.customer_email %}<p>{{ invoice.customer_email }}</p>{% endif %}
+</div>
+
+<div class="card">
+    <h3>Service</h3>
+    <p><strong>Job #{{ invoice.job_id }}</strong> &mdash; {{ invoice.device_brand }} {{ invoice.device_model }} ({{ invoice.device_type }})</p>
+    <p>{{ invoice.issue_description }}</p>
+</div>
+
+<div class="card">
+    <h3>Charges</h3>
+    <table class="history-table">
+        <tr><td>Subtotal (incl. tax)</td><td>${{ "%.2f" | format(invoice.subtotal) }}</td></tr>
+        {% if invoice.coins_applied > 0 %}
+        <tr><td>Crucible Coin discount ({{ invoice.coins_applied | int }} coins)</td><td>-${{ "%.2f" | format(invoice.discount_amount) }}</td></tr>
+        {% endif %}
+        <tr><td><strong>Total Due</strong></td><td><strong>${{ "%.2f" | format(invoice.total) }}</strong></td></tr>
+    </table>
+    <p><small>Issued: {{ invoice.created_at }}{% if invoice.paid_at %} &middot; Paid: {{ invoice.paid_at }}{% endif %}</small></p>
+</div>
+
+<div class="card">
+    <h3>Actions</h3>
+    <div class="status-form">
+        <form method="POST" action="{{ url_for('invoice_send_sms', invoice_id=invoice.id) }}">
+            <button type="submit" class="btn">Text Invoice to Customer</button>
+        </form>
+        {% if invoice.status != 'paid' %}
+        <form method="POST" action="{{ url_for('invoice_mark_paid', invoice_id=invoice.id) }}">
+            <button type="submit" class="btn btn-primary">Mark as Paid</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

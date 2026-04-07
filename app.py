@@ -3,6 +3,7 @@ from config import Config
 from models.database import get_db, close_db, init_db, VALID_STATUSES
 from services.sms import notify_customer
 from services.wallet import get_wallet, get_balance, add_coins, spend_coins, reward_completed_job, get_transaction_history, calc_max_coin_discount, COIN_VALUE_CAD
+from services.invoice import create_invoice, mark_paid, send_invoice_sms, TAX_RATE
 from datetime import datetime
 
 
@@ -205,6 +206,105 @@ def create_app():
             flash("Invalid action.", "error")
 
         return redirect(url_for("wallet_detail", customer_id=customer_id))
+
+    # ── Invoices ─────────────────────────────────────────────────────
+
+    @app.route("/invoices")
+    def invoices():
+        db = get_db()
+        invoice_list = db.execute(
+            """
+            SELECT i.*, c.name AS customer_name, r.device_type
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            JOIN repair_jobs r ON i.job_id = r.id
+            ORDER BY i.created_at DESC
+            """
+        ).fetchall()
+        return render_template("invoices.html", invoices=invoice_list)
+
+    @app.route("/job/<int:job_id>/invoice/new", methods=["GET", "POST"])
+    def new_invoice(job_id):
+        db = get_db()
+        job = db.execute(
+            """
+            SELECT r.*, c.name AS customer_name, c.phone AS customer_phone
+            FROM repair_jobs r
+            JOIN customers c ON r.customer_id = c.id
+            WHERE r.id = ?
+            """,
+            (job_id,),
+        ).fetchone()
+        if not job:
+            flash("Job not found.", "error")
+            return redirect(url_for("dashboard"))
+
+        if not job["final_cost"]:
+            flash("Set a final cost on the job before creating an invoice.", "error")
+            return redirect(url_for("job_detail", job_id=job_id))
+
+        if request.method == "POST":
+            try:
+                coins = int(request.form.get("coins_to_apply", 0))
+            except ValueError:
+                coins = 0
+
+            invoice_id = create_invoice(job_id, coins_to_apply=coins)
+            if invoice_id:
+                flash(f"Invoice #{invoice_id} created.", "success")
+                return redirect(url_for("invoice_detail", invoice_id=invoice_id))
+            flash("Failed to create invoice.", "error")
+            return redirect(url_for("job_detail", job_id=job_id))
+
+        subtotal_pre_tax = job["final_cost"]
+        tax = subtotal_pre_tax * TAX_RATE
+        subtotal = subtotal_pre_tax + tax
+        max_coins = calc_max_coin_discount(subtotal, job["customer_id"])
+        balance = get_balance(job["customer_id"])
+        return render_template(
+            "invoice_new.html",
+            job=job,
+            subtotal_pre_tax=subtotal_pre_tax,
+            tax=tax,
+            subtotal=subtotal,
+            tax_rate=TAX_RATE,
+            max_coins=max_coins,
+            balance=balance,
+            coin_value=COIN_VALUE_CAD,
+        )
+
+    @app.route("/invoice/<int:invoice_id>")
+    def invoice_detail(invoice_id):
+        db = get_db()
+        invoice = db.execute(
+            """
+            SELECT i.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+                   r.device_type, r.device_brand, r.device_model, r.issue_description
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            JOIN repair_jobs r ON i.job_id = r.id
+            WHERE i.id = ?
+            """,
+            (invoice_id,),
+        ).fetchone()
+        if not invoice:
+            flash("Invoice not found.", "error")
+            return redirect(url_for("invoices"))
+        return render_template("invoice_detail.html", invoice=invoice, tax_rate=TAX_RATE)
+
+    @app.route("/invoice/<int:invoice_id>/mark-paid", methods=["POST"])
+    def invoice_mark_paid(invoice_id):
+        mark_paid(invoice_id)
+        flash("Invoice marked as paid.", "success")
+        return redirect(url_for("invoice_detail", invoice_id=invoice_id))
+
+    @app.route("/invoice/<int:invoice_id>/send-sms", methods=["POST"])
+    def invoice_send_sms(invoice_id):
+        if send_invoice_sms(invoice_id):
+            flash("Invoice texted to customer.", "success")
+        else:
+            flash("SMS failed (check Twilio config).", "error")
+        return redirect(url_for("invoice_detail", invoice_id=invoice_id))
 
     # ── Customer Booking ─────────────────────────────────────────────
 

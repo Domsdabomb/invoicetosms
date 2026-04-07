@@ -35,6 +35,9 @@
         <h3>Costs</h3>
         <p>Estimated: {{ "$%.2f" | format(job.estimated_cost) if job.estimated_cost else "TBD" }}</p>
         <p>Final: {{ "$%.2f" | format(job.final_cost) if job.final_cost else "TBD" }}</p>
+        {% if job.final_cost %}
+        <p style="margin-top: 0.75rem;"><a href="{{ url_for('new_invoice', job_id=job.id) }}" class="btn btn-primary">Create Invoice</a></p>
+        {% endif %}
     </div>
 </div>
 

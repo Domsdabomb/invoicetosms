@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}New Invoice - The Crucible{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('job_detail', job_id=job.id) }}" class="back-link">&larr; Back to Job</a>
+
+<h1>Create Invoice for Job #{{ job.id }}</h1>
+
+<div class="card">
+    <h3>Bill Preview</h3>
+    <p><strong>{{ job.customer_name }}</strong> &mdash; {{ job.device_type }}</p>
+    <table class="history-table">
+        <tr><td>Repair cost</td><td>${{ "%.2f" | format(subtotal_pre_tax) }}</td></tr>
+        <tr><td>Tax ({{ (tax_rate * 100) | int }}% BC PST+GST)</td><td>${{ "%.2f" | format(tax) }}</td></tr>
+        <tr><td><strong>Subtotal</strong></td><td><strong>${{ "%.2f" | format(subtotal) }}</strong></td></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h3>Apply Crucible Coins (Optional)</h3>
+    <p>Customer balance: <span class="coin-balance">{{ balance | int }} coins</span></p>
+    <p>Max applicable: <strong>{{ max_coins | int }} coins</strong> ({{ "%.2f" | format(max_coins * coin_value) }} CAD)</p>
+    <p><small>Max 25% of bill payable in coins.</small></p>
+
+    <form method="POST" class="status-form">
+        <input type="number" name="coins_to_apply" min="0" max="{{ max_coins | int }}" value="0" class="input" style="max-width: 150px;">
+        <button type="submit" class="btn btn-primary">Generate Invoice</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Invoices - The Crucible{% endblock %}
+
+{% block content %}
+<h1>Invoices</h1>
+
+{% if invoices %}
+<table class="job-table">
+    <thead>
+        <tr>
+            <th>Invoice #</th>
+            <th>Customer</th>
+            <th>Job</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inv in invoices %}
+        <tr class="job-row" onclick="window.location='{{ url_for('invoice_detail', invoice_id=inv.id) }}'">
+            <td><strong>#{{ inv.id }}</strong></td>
+            <td>{{ inv.customer_name }}</td>
+            <td>#{{ inv.job_id }} — {{ inv.device_type }}</td>
+            <td>${{ "%.2f" | format(inv.total) }}</td>
+            <td><span class="badge badge-{{ 'completed' if inv.status == 'paid' else 'waiting_for_parts' }}">{{ inv.status }}</span></td>
+            <td><small>{{ inv.created_at }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No invoices yet</h2>
+    <p>Create an invoice from any job with a final cost set.</p>
+</div>
+{% endif %}
+{% endblock %}

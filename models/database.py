@@ -67,6 +67,21 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     FOREIGN KEY (wallet_id) REFERENCES wallets(id),
     FOREIGN KEY (job_id) REFERENCES repair_jobs(id)
 );
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL,
+    customer_id INTEGER NOT NULL,
+    subtotal REAL NOT NULL,
+    coins_applied REAL NOT NULL DEFAULT 0,
+    discount_amount REAL NOT NULL DEFAULT 0,
+    total REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'unpaid',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    paid_at TIMESTAMP,
+    FOREIGN KEY (job_id) REFERENCES repair_jobs(id),
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
 """
 
 VALID_STATUSES = [
