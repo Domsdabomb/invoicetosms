@@ -305,6 +305,14 @@ textarea.input { resize: vertical; }
 .job-number { font-size: 2rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
 .status-note { margin-top: 1rem; }
 
+/* ── Auth ────────────────────────────────────────────────────────── */
+
+.auth-page { text-align: center; padding: 3rem 0; }
+.auth-page h1 { font-size: 2rem; color: var(--accent); margin-bottom: 0.25rem; }
+.auth-subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+.auth-card { display: inline-block; text-align: left; min-width: 320px; max-width: 400px; }
+.nav-logout { color: var(--error) !important; }
+
 /* ── Footer ──────────────────────────────────────────────────────── */
 
 .footer {

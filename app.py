@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from config import Config
 from models.database import get_db, close_db, init_db, VALID_STATUSES
 from services.sms import notify_customer
 from services.wallet import get_wallet, get_balance, add_coins, spend_coins, reward_completed_job, get_transaction_history, calc_max_coin_discount, COIN_VALUE_CAD
 from services.invoice import create_invoice, mark_paid, send_invoice_sms, preview_invoice, TAX_RATE
+from services.auth import login_required, get_admin, create_admin, verify_password, admin_exists
 from datetime import datetime
 
 
@@ -15,9 +16,54 @@ def create_app():
     with app.app_context():
         init_db()
 
+    # ── Auth ─────────────────────────────────────────────────────────
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        if not admin_exists():
+            return redirect(url_for("setup"))
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            admin = get_admin(username)
+            if admin and verify_password(password, admin["password_hash"]):
+                session["admin_id"] = admin["id"]
+                session["admin_username"] = admin["username"]
+                flash(f"Welcome back, {username}.", "success")
+                return redirect(request.args.get("next") or url_for("dashboard"))
+            flash("Invalid username or password.", "error")
+        return render_template("login.html")
+
+    @app.route("/logout")
+    def logout():
+        session.clear()
+        flash("Logged out.", "success")
+        return redirect(url_for("login"))
+
+    @app.route("/setup", methods=["GET", "POST"])
+    def setup():
+        if admin_exists():
+            return redirect(url_for("login"))
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            if not username or not password:
+                flash("Username and password are required.", "error")
+                return render_template("setup.html")
+            if len(password) < 6:
+                flash("Password must be at least 6 characters.", "error")
+                return render_template("setup.html")
+            create_admin(username, password)
+            session["admin_id"] = get_admin(username)["id"]
+            session["admin_username"] = username
+            flash(f"Admin account '{username}' created. You're logged in.", "success")
+            return redirect(url_for("dashboard"))
+        return render_template("setup.html")
+
     # ── Admin Dashboard ──────────────────────────────────────────────
 
     @app.route("/")
+    @login_required
     def dashboard():
         db = get_db()
         search = request.args.get("q", "").strip()
@@ -50,6 +96,7 @@ def create_app():
         return render_template("dashboard.html", jobs=jobs, statuses=VALID_STATUSES, search=search, status_filter=status_filter)
 
     @app.route("/job/<int:job_id>")
+    @login_required
     def job_detail(job_id):
         db = get_db()
         job = db.execute(
@@ -80,6 +127,7 @@ def create_app():
         )
 
     @app.route("/job/<int:job_id>/update-status", methods=["POST"])
+    @login_required
     def update_status(job_id):
         new_status = request.form.get("status")
         note = request.form.get("note", "")
@@ -148,6 +196,7 @@ def create_app():
     # ── SMS Log ───────────────────────────────────────────────────────
 
     @app.route("/sms-log")
+    @login_required
     def sms_log():
         db = get_db()
         logs = db.execute(
@@ -164,6 +213,7 @@ def create_app():
     # ── Wallet / Crucible Coin ───────────────────────────────────────
 
     @app.route("/wallets")
+    @login_required
     def wallets():
         db = get_db()
         wallet_list = db.execute(
@@ -177,6 +227,7 @@ def create_app():
         return render_template("wallets.html", wallets=wallet_list, coin_value=COIN_VALUE_CAD)
 
     @app.route("/wallet/<int:customer_id>")
+    @login_required
     def wallet_detail(customer_id):
         db = get_db()
         customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
@@ -195,6 +246,7 @@ def create_app():
         )
 
     @app.route("/wallet/<int:customer_id>/adjust", methods=["POST"])
+    @login_required
     def wallet_adjust(customer_id):
         action = request.form.get("action")
         amount = request.form.get("amount", "0")
@@ -229,6 +281,7 @@ def create_app():
     # ── Invoices ─────────────────────────────────────────────────────
 
     @app.route("/invoices")
+    @login_required
     def invoices():
         db = get_db()
         invoice_list = db.execute(
@@ -243,6 +296,7 @@ def create_app():
         return render_template("invoices.html", invoices=invoice_list)
 
     @app.route("/job/<int:job_id>/invoice/new", methods=["GET", "POST"])
+    @login_required
     def new_invoice(job_id):
         if request.method == "POST":
             try:
@@ -275,6 +329,7 @@ def create_app():
         )
 
     @app.route("/invoice/<int:invoice_id>")
+    @login_required
     def invoice_detail(invoice_id):
         db = get_db()
         invoice = db.execute(
@@ -294,12 +349,14 @@ def create_app():
         return render_template("invoice_detail.html", invoice=invoice, tax_rate=TAX_RATE)
 
     @app.route("/invoice/<int:invoice_id>/mark-paid", methods=["POST"])
+    @login_required
     def invoice_mark_paid(invoice_id):
         mark_paid(invoice_id)
         flash("Invoice marked as paid.", "success")
         return redirect(url_for("invoice_detail", invoice_id=invoice_id))
 
     @app.route("/invoice/<int:invoice_id>/send-sms", methods=["POST"])
+    @login_required
     def invoice_send_sms(invoice_id):
         if send_invoice_sms(invoice_id):
             flash("Invoice texted to customer.", "success")
@@ -395,6 +452,7 @@ def create_app():
     # ── Job Editing (costs/notes) ────────────────────────────────────
 
     @app.route("/job/<int:job_id>/edit", methods=["POST"])
+    @login_required
     def edit_job(job_id):
         db = get_db()
         job = db.execute("SELECT * FROM repair_jobs WHERE id = ?", (job_id,)).fetchone()

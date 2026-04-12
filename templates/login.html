@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Login - The Crucible{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <h1>The Crucible</h1>
+    <p class="auth-subtitle">Admin Login</p>
+
+    <div class="card auth-card">
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" required class="input" autofocus>
+            <label>Password</label>
+            <input type="password" name="password" required class="input">
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 1.25rem;">Log In</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
