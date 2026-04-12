@@ -7,12 +7,25 @@
     <a href="{{ url_for('book_repair') }}" class="btn btn-primary">+ New Job</a>
 </div>
 
-{% if jobs %}
-<div class="status-legend">
-    {% for status in statuses %}
-    <span class="badge badge-{{ status }}">{{ status | replace('_', ' ') | title }}</span>
-    {% endfor %}
+<div class="card search-bar">
+    <form method="GET" action="{{ url_for('dashboard') }}" class="search-form">
+        <input type="text" name="q" value="{{ search or '' }}" placeholder="Search by name, phone, device, job #..." class="input">
+        <select name="status" class="input" style="max-width: 200px;">
+            <option value="">All Statuses</option>
+            {% for status in statuses %}
+            <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                {{ status | replace('_', ' ') | title }}
+            </option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">Search</button>
+        {% if search or status_filter %}
+        <a href="{{ url_for('dashboard') }}" class="btn">Clear</a>
+        {% endif %}
+    </form>
 </div>
+
+{% if jobs %}
 
 <table class="job-table">
     <thead>

@@ -20,15 +20,34 @@ def create_app():
     @app.route("/")
     def dashboard():
         db = get_db()
-        jobs = db.execute(
-            """
+        search = request.args.get("q", "").strip()
+        status_filter = request.args.get("status", "").strip()
+
+        query = """
             SELECT r.*, c.name AS customer_name, c.phone AS customer_phone
             FROM repair_jobs r
             JOIN customers c ON r.customer_id = c.id
-            ORDER BY r.updated_at DESC
-            """
-        ).fetchall()
-        return render_template("dashboard.html", jobs=jobs, statuses=VALID_STATUSES)
+        """
+        conditions = []
+        params = []
+
+        if search:
+            conditions.append(
+                "(c.name LIKE ? OR c.phone LIKE ? OR r.device_brand LIKE ? OR r.device_model LIKE ? OR r.issue_description LIKE ? OR CAST(r.id AS TEXT) = ?)"
+            )
+            like = f"%{search}%"
+            params.extend([like, like, like, like, like, search])
+
+        if status_filter and status_filter in VALID_STATUSES:
+            conditions.append("r.status = ?")
+            params.append(status_filter)
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        query += " ORDER BY r.updated_at DESC"
+        jobs = db.execute(query, params).fetchall()
+        return render_template("dashboard.html", jobs=jobs, statuses=VALID_STATUSES, search=search, status_filter=status_filter)
 
     @app.route("/job/<int:job_id>")
     def job_detail(job_id):
@@ -345,6 +364,65 @@ def create_app():
         if not job:
             return redirect(url_for("book_repair"))
         return render_template("confirmation.html", job=job)
+
+    # ── Customer Status Tracking ─────────────────────────────────────
+
+    @app.route("/track")
+    def track():
+        return render_template("track.html")
+
+    @app.route("/track/result")
+    def track_result():
+        phone = request.args.get("phone", "").strip()
+        if not phone:
+            return redirect(url_for("track"))
+
+        # Normalize: strip spaces, dashes, parens for flexible matching
+        digits = "".join(c for c in phone if c.isdigit())
+        db = get_db()
+        jobs = db.execute(
+            """
+            SELECT r.*, c.phone
+            FROM repair_jobs r
+            JOIN customers c ON r.customer_id = c.id
+            WHERE replace(replace(replace(replace(c.phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?
+            ORDER BY r.updated_at DESC
+            """,
+            (f"%{digits}%",),
+        ).fetchall()
+        return render_template("track_result.html", jobs=jobs, phone=phone)
+
+    # ── Job Editing (costs/notes) ────────────────────────────────────
+
+    @app.route("/job/<int:job_id>/edit", methods=["POST"])
+    def edit_job(job_id):
+        db = get_db()
+        job = db.execute("SELECT * FROM repair_jobs WHERE id = ?", (job_id,)).fetchone()
+        if not job:
+            flash("Job not found.", "error")
+            return redirect(url_for("dashboard"))
+
+        estimated = request.form.get("estimated_cost", "").strip()
+        final = request.form.get("final_cost", "").strip()
+        notes = request.form.get("notes", "").strip()
+
+        try:
+            estimated_cost = float(estimated) if estimated else None
+        except ValueError:
+            estimated_cost = job["estimated_cost"]
+
+        try:
+            final_cost = float(final) if final else None
+        except ValueError:
+            final_cost = job["final_cost"]
+
+        db.execute(
+            "UPDATE repair_jobs SET estimated_cost = ?, final_cost = ?, notes = ?, updated_at = ? WHERE id = ?",
+            (estimated_cost, final_cost, notes, datetime.now(), job_id),
+        )
+        db.commit()
+        flash("Job updated.", "success")
+        return redirect(url_for("job_detail", job_id=job_id))
 
     return app
 

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Track Your Repair - The Crucible{% endblock %}
+
+{% block content %}
+<h1>Track Your Repair</h1>
+
+<div class="card">
+    <h3>Look Up Your Job</h3>
+    <form method="GET" action="{{ url_for('track_result') }}" class="status-form">
+        <input type="text" name="phone" placeholder="Your phone number" required class="input">
+        <button type="submit" class="btn btn-primary">Look Up</button>
+    </form>
+</div>
+{% endblock %}

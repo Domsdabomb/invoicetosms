@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Your Repairs - The Crucible{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('track') }}" class="back-link">&larr; New Search</a>
+
+<h1>Repairs for {{ phone }}</h1>
+
+{% if jobs %}
+{% for job in jobs %}
+<div class="card">
+    <div class="job-header" style="margin-bottom: 0.5rem;">
+        <h3 style="margin-bottom: 0;">Job #{{ job.id }} &mdash; {{ job.device_brand }} {{ job.device_model }} ({{ job.device_type }})</h3>
+        <span class="badge badge-{{ job.status }} badge-lg">{{ job.status | replace('_', ' ') | title }}</span>
+    </div>
+    <p>{{ job.issue_description }}</p>
+    <p><small>Last updated: {{ job.updated_at }}</small></p>
+
+    {% if job.status == 'ready_for_pickup' %}
+    <p class="track-ready">Your device is ready for pickup!</p>
+    {% elif job.status == 'completed' %}
+    <p><small>This repair is complete. Thanks for choosing The Crucible.</small></p>
+    {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <h2>No repairs found</h2>
+    <p>We couldn't find any repairs linked to that phone number. Double-check the number or contact us.</p>
+    <a href="{{ url_for('track') }}" class="btn">Try Again</a>
+</div>
+{% endif %}
+{% endblock %}

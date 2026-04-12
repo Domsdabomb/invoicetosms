@@ -109,6 +109,19 @@ body {
 
 .issue-cell { max-width: 250px; }
 
+.search-bar { margin-bottom: 1.5rem; }
+.search-form { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+.track-ready {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid var(--success);
+    border-radius: var(--radius);
+    font-weight: 600;
+    color: var(--success);
+}
+
 .empty-state {
     text-align: center;
     padding: 4rem 1rem;
