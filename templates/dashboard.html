@@ -7,6 +7,31 @@
     <a href="{{ url_for('book_repair') }}" class="btn btn-primary">+ New Job</a>
 </div>
 
+{% if stats %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.active_jobs or 0 }}</span>
+        <span class="stat-label">Active Jobs</span>
+    </div>
+    <div class="stat-card stat-accent">
+        <span class="stat-number">{{ stats.ready_jobs or 0 }}</span>
+        <span class="stat-label">Ready for Pickup</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.completed_jobs or 0 }}</span>
+        <span class="stat-label">Completed</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">${{ "%.0f" | format(revenue.paid_revenue) }}</span>
+        <span class="stat-label">Revenue Collected</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">${{ "%.0f" | format(revenue.unpaid_revenue) }}</span>
+        <span class="stat-label">Outstanding</span>
+    </div>
+</div>
+{% endif %}
+
 <div class="card search-bar">
     <form method="GET" action="{{ url_for('dashboard') }}" class="search-form">
         <input type="text" name="q" value="{{ search or '' }}" placeholder="Search by name, phone, device, job #..." class="input">

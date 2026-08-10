@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Customers - The Crucible{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Customers</h1>
+    <span class="stat-label">{{ customers | length }} total</span>
+</div>
+
+{% if customers %}
+<table class="job-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Jobs</th>
+            <th>Active</th>
+            <th>Coins</th>
+            <th>Since</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in customers %}
+        <tr class="job-row" onclick="window.location='{{ url_for('customer_detail', customer_id=c.id) }}'">
+            <td><strong>{{ c.name }}</strong></td>
+            <td>{{ c.phone }}</td>
+            <td>{{ c.email or '-' }}</td>
+            <td>{{ c.job_count }}</td>
+            <td>{% if c.active_jobs %}<span class="badge badge-in_repair">{{ c.active_jobs }}</span>{% else %}-{% endif %}</td>
+            <td>{% if c.coin_balance %}<span class="coin-balance">{{ c.coin_balance | int }}</span>{% else %}0{% endif %}</td>
+            <td><small>{{ c.created_at }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No customers yet</h2>
+    <p>Customers are created when they book a repair.</p>
+</div>
+{% endif %}
+{% endblock %}

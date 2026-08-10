@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} - The Crucible{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('customers') }}" class="back-link">&larr; Back to Customers</a>
+
+<div class="job-header">
+    <h1>{{ customer.name }}</h1>
+    {% if wallet_balance %}
+    <span class="coin-balance">{{ wallet_balance | int }} Crucible Coins</span>
+    {% endif %}
+</div>
+
+<div class="job-grid">
+    <div class="card">
+        <h3>Contact</h3>
+        <p>{{ customer.phone }}</p>
+        {% if customer.email %}<p>{{ customer.email }}</p>{% endif %}
+        <p><small>Customer since {{ customer.created_at }}</small></p>
+    </div>
+
+    <div class="card">
+        <h3>Summary</h3>
+        <p>{{ jobs | length }} repair{{ 's' if jobs | length != 1 }} total</p>
+        <p>{{ invoices | length }} invoice{{ 's' if invoices | length != 1 }}</p>
+        {% if wallet_balance %}
+        <p><a href="{{ url_for('wallet_detail', customer_id=customer.id) }}" class="btn" style="margin-top: 0.5rem;">View Wallet</a></p>
+        {% endif %}
+    </div>
+</div>
+
+{% if jobs %}
+<div class="card">
+    <h3>Repair History</h3>
+    <table class="history-table">
+        <thead>
+            <tr><th>Job #</th><th>Device</th><th>Issue</th><th>Status</th><th>Updated</th></tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr class="job-row" onclick="window.location='{{ url_for('job_detail', job_id=job.id) }}'">
+                <td><strong>#{{ job.id }}</strong></td>
+                <td>{{ job.device_brand }} {{ job.device_model }} ({{ job.device_type }})</td>
+                <td class="issue-cell">{{ job.issue_description[:60] }}{% if job.issue_description|length > 60 %}...{% endif %}</td>
+                <td><span class="badge badge-{{ job.status }}">{{ job.status | replace('_', ' ') | title }}</span></td>
+                <td><small>{{ job.updated_at }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if invoices %}
+<div class="card">
+    <h3>Invoices</h3>
+    <table class="history-table">
+        <thead>
+            <tr><th>Invoice #</th><th>Total</th><th>Status</th><th>Created</th></tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr class="job-row" onclick="window.location='{{ url_for('invoice_detail', invoice_id=inv.id) }}'">
+                <td><strong>#{{ inv.id }}</strong></td>
+                <td>${{ "%.2f" | format(inv.total) }}</td>
+                <td><span class="badge badge-{{ 'completed' if inv.status == 'paid' else 'waiting_for_parts' }}">{{ inv.status }}</span></td>
+                <td><small>{{ inv.created_at }}</small></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

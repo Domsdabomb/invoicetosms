@@ -93,7 +93,29 @@ def create_app():
 
         query += " ORDER BY r.updated_at DESC"
         jobs = db.execute(query, params).fetchall()
-        return render_template("dashboard.html", jobs=jobs, statuses=VALID_STATUSES, search=search, status_filter=status_filter)
+
+        stats = db.execute("""
+            SELECT
+                COUNT(*) AS total_jobs,
+                SUM(CASE WHEN status NOT IN ('completed', 'cancelled') THEN 1 ELSE 0 END) AS active_jobs,
+                SUM(CASE WHEN status = 'ready_for_pickup' THEN 1 ELSE 0 END) AS ready_jobs,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_jobs
+            FROM repair_jobs
+        """).fetchone()
+
+        revenue = db.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN status = 'paid' THEN total ELSE 0 END), 0) AS paid_revenue,
+                COALESCE(SUM(CASE WHEN status = 'unpaid' THEN total ELSE 0 END), 0) AS unpaid_revenue,
+                COUNT(*) AS total_invoices
+            FROM invoices
+        """).fetchone()
+
+        return render_template(
+            "dashboard.html", jobs=jobs, statuses=VALID_STATUSES,
+            search=search, status_filter=status_filter,
+            stats=stats, revenue=revenue,
+        )
 
     @app.route("/job/<int:job_id>")
     @login_required
@@ -192,6 +214,53 @@ def create_app():
                 flash(f"Customer earned {coins} Crucible Coins!", "success")
 
         return redirect(url_for("job_detail", job_id=job_id))
+
+    # ── Customers ────────────────────────────────────────────────────
+
+    @app.route("/customers")
+    @login_required
+    def customers():
+        db = get_db()
+        customer_list = db.execute(
+            """
+            SELECT c.*,
+                   COUNT(r.id) AS job_count,
+                   SUM(CASE WHEN r.status NOT IN ('completed', 'cancelled') THEN 1 ELSE 0 END) AS active_jobs,
+                   COALESCE(w.balance, 0) AS coin_balance
+            FROM customers c
+            LEFT JOIN repair_jobs r ON r.customer_id = c.id
+            LEFT JOIN wallets w ON w.customer_id = c.id
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+            """
+        ).fetchall()
+        return render_template("customers.html", customers=customer_list)
+
+    @app.route("/customer/<int:customer_id>")
+    @login_required
+    def customer_detail(customer_id):
+        db = get_db()
+        customer = db.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Customer not found.", "error")
+            return redirect(url_for("customers"))
+
+        jobs = db.execute(
+            "SELECT * FROM repair_jobs WHERE customer_id = ? ORDER BY updated_at DESC",
+            (customer_id,),
+        ).fetchall()
+
+        invoices_list = db.execute(
+            "SELECT * FROM invoices WHERE customer_id = ? ORDER BY created_at DESC",
+            (customer_id,),
+        ).fetchall()
+
+        wallet_balance = get_balance(customer_id)
+        return render_template(
+            "customer_detail.html",
+            customer=customer, jobs=jobs, invoices=invoices_list,
+            wallet_balance=wallet_balance, statuses=VALID_STATUSES,
+        )
 
     # ── SMS Log ───────────────────────────────────────────────────────
 

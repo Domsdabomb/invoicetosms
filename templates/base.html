@@ -12,8 +12,9 @@
         <div class="nav-links">
             {% if session.get('admin_id') %}
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('wallets') }}">Wallets</a>
+            <a href="{{ url_for('customers') }}">Customers</a>
             <a href="{{ url_for('invoices') }}">Invoices</a>
+            <a href="{{ url_for('wallets') }}">Wallets</a>
             <a href="{{ url_for('sms_log') }}">SMS Log</a>
             <a href="{{ url_for('book_repair') }}">New Booking</a>
             {% endif %}
