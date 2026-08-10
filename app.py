@@ -451,11 +451,26 @@ def create_app():
                 return render_template("book.html")
 
             db = get_db()
-            cursor = db.execute(
-                "INSERT INTO customers (name, phone, email) VALUES (?, ?, ?)",
-                (name, phone, email),
-            )
-            customer_id = cursor.lastrowid
+            digits = "".join(c for c in phone if c.isdigit())
+            existing = db.execute(
+                "SELECT id FROM customers WHERE replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?",
+                (f"%{digits}%",),
+            ).fetchone()
+
+            if existing:
+                customer_id = existing["id"]
+                db.execute(
+                    "UPDATE customers SET name = ?, email = COALESCE(NULLIF(?, ''), email) WHERE id = ?",
+                    (name, email, customer_id),
+                )
+            else:
+                cursor = db.execute(
+                    "INSERT INTO customers (name, phone, email) VALUES (?, ?, ?)",
+                    (name, phone, email),
+                )
+                customer_id = cursor.lastrowid
+
+            referral_code = request.form.get("referral", "").strip()
 
             cursor = db.execute(
                 """INSERT INTO repair_jobs
@@ -469,6 +484,31 @@ def create_app():
                 "INSERT INTO status_history (job_id, new_status, note) VALUES (?, 'intake', 'Job created via booking form')",
                 (job_id,),
             )
+            db.commit()
+
+            device = f"{device_brand} {device_model}".strip() or device_type
+            confirm_msg = (
+                f"Hi {name}, your repair has been booked at The Crucible! "
+                f"Job #{job_id} — {device}. We'll text you with updates."
+            )
+            from services.sms import send_sms
+            sent = send_sms(phone, confirm_msg)
+            db.execute(
+                "INSERT INTO sms_log (job_id, phone, message, status) VALUES (?, ?, ?, ?)",
+                (job_id, phone, confirm_msg, "sent" if sent else "failed"),
+            )
+
+            if referral_code:
+                referrer_digits = "".join(c for c in referral_code if c.isdigit())
+                referrer = db.execute(
+                    "SELECT id FROM customers WHERE replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ? AND id != ?",
+                    (f"%{referrer_digits}%", customer_id),
+                ).fetchone()
+                if referrer:
+                    from services.wallet import add_coins, REFERRAL_BONUS_COINS
+                    add_coins(referrer["id"], REFERRAL_BONUS_COINS, f"Referral bonus — {name} booked Job #{job_id}", job_id=job_id)
+                    add_coins(customer_id, REFERRAL_BONUS_COINS, f"Referred by an existing customer — Job #{job_id}", job_id=job_id)
+
             db.commit()
             flash(f"Repair booked! Your job number is #{job_id}.", "success")
             return redirect(url_for("booking_confirmation", job_id=job_id))
