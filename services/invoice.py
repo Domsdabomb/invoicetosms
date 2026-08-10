@@ -68,9 +68,9 @@ def create_invoice(job_id, coins_to_apply=0):
 
     db = get_db()
     cursor = db.execute(
-        """INSERT INTO invoices (job_id, customer_id, subtotal, coins_applied, discount_amount, total)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (job_id, customer_id, subtotal, coins_applied, discount, total),
+        """INSERT INTO invoices (job_id, customer_id, pre_tax, tax, subtotal, coins_applied, discount_amount, total)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (job_id, customer_id, preview["pre_tax"], preview["tax"], subtotal, coins_applied, discount, total),
     )
     db.commit()
     return cursor.lastrowid

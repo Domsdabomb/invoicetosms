@@ -90,21 +90,24 @@ def spend_coins(customer_id, amount, reason, job_id=None):
 
 
 def reward_completed_job(job_id):
-    """Award coins when a repair job is completed."""
+    """Award coins when a repair job is completed. Idempotent — skips if already rewarded."""
     db = get_db()
+    already = db.execute(
+        "SELECT id FROM wallet_transactions WHERE job_id = ? AND reason LIKE 'Repair completed%'",
+        (job_id,),
+    ).fetchone()
+    if already:
+        return 0
+
     job = db.execute(
         "SELECT * FROM repair_jobs WHERE id = ?", (job_id,)
     ).fetchone()
-
     if not job:
         return 0
 
     total_coins = COINS_PER_COMPLETED_JOB
-
-    # Bonus coins based on final cost
     if job["final_cost"] and job["final_cost"] > 0:
-        spend_bonus = int(job["final_cost"] * COINS_PER_DOLLAR_SPENT)
-        total_coins += spend_bonus
+        total_coins += int(job["final_cost"] * COINS_PER_DOLLAR_SPENT)
 
     add_coins(
         job["customer_id"],

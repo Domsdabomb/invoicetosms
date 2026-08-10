@@ -8,6 +8,7 @@
 
     <div class="card auth-card">
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label>Username</label>
             <input type="text" name="username" required class="input" autofocus>
             <label>Password</label>

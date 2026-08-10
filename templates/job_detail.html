@@ -51,6 +51,7 @@
 <div class="card">
     <h3>Edit Job Details</h3>
     <form method="POST" action="{{ url_for('edit_job', job_id=job.id) }}" class="status-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="number" name="estimated_cost" step="0.01" min="0" value="{{ job.estimated_cost or '' }}" placeholder="Estimated cost" class="input" style="max-width: 160px;">
         <input type="number" name="final_cost" step="0.01" min="0" value="{{ job.final_cost or '' }}" placeholder="Final cost" class="input" style="max-width: 160px;">
         <input type="text" name="notes" value="{{ job.notes or '' }}" placeholder="Notes..." class="input">
@@ -61,6 +62,7 @@
 <div class="card">
     <h3>Update Status</h3>
     <form method="POST" action="{{ url_for('update_status', job_id=job.id) }}" class="status-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <select name="status" class="input">
             {% for status in statuses %}
             <option value="{{ status }}" {% if status == job.status %}selected{% endif %}>

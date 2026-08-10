@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     job_id INTEGER NOT NULL,
     customer_id INTEGER NOT NULL,
+    pre_tax REAL NOT NULL DEFAULT 0,
+    tax REAL NOT NULL DEFAULT 0,
     subtotal REAL NOT NULL,
     coins_applied REAL NOT NULL DEFAULT 0,
     discount_amount REAL NOT NULL DEFAULT 0,

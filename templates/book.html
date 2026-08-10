@@ -5,14 +5,15 @@
 <h1>Book a Repair</h1>
 
 <form method="POST" class="booking-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-section">
         <h3>Your Info</h3>
         <label>Name *</label>
-        <input type="text" name="name" required class="input">
+        <input type="text" name="name" required class="input" value="{{ (form.name if form) or '' }}">
         <label>Phone *</label>
-        <input type="tel" name="phone" required class="input">
+        <input type="tel" name="phone" required class="input" value="{{ (form.phone if form) or '' }}">
         <label>Email</label>
-        <input type="email" name="email" class="input">
+        <input type="email" name="email" class="input" value="{{ (form.email if form) or '' }}">
     </div>
 
     <div class="form-section">
@@ -20,29 +21,26 @@
         <label>Device Type *</label>
         <select name="device_type" required class="input">
             <option value="">Select...</option>
-            <option value="Phone">Phone</option>
-            <option value="Tablet">Tablet</option>
-            <option value="Laptop">Laptop</option>
-            <option value="Desktop">Desktop</option>
-            <option value="Console">Console</option>
-            <option value="Other">Other</option>
+            {% for dt in ['Phone', 'Tablet', 'Laptop', 'Desktop', 'Console', 'Other'] %}
+            <option value="{{ dt }}" {{ 'selected' if form and form.device_type == dt }}>{{ dt }}</option>
+            {% endfor %}
         </select>
         <label>Brand</label>
-        <input type="text" name="device_brand" placeholder="e.g. Apple, Samsung..." class="input">
+        <input type="text" name="device_brand" placeholder="e.g. Apple, Samsung..." class="input" value="{{ (form.device_brand if form) or '' }}">
         <label>Model</label>
-        <input type="text" name="device_model" placeholder="e.g. iPhone 15, Galaxy S24..." class="input">
+        <input type="text" name="device_model" placeholder="e.g. iPhone 15, Galaxy S24..." class="input" value="{{ (form.device_model if form) or '' }}">
     </div>
 
     <div class="form-section">
         <h3>What's Wrong?</h3>
         <label>Describe the issue *</label>
-        <textarea name="issue_description" required rows="4" class="input" placeholder="Cracked screen, won't charge, water damage..."></textarea>
+        <textarea name="issue_description" required rows="4" class="input" placeholder="Cracked screen, won't charge, water damage...">{{ (form.issue_description if form) or '' }}</textarea>
     </div>
 
     <div class="form-section">
         <h3>Referral (Optional)</h3>
         <label>Referred by someone? Enter their phone number for bonus Crucible Coins</label>
-        <input type="tel" name="referral" placeholder="Referrer's phone number" class="input">
+        <input type="tel" name="referral" placeholder="Referrer's phone number" class="input" value="{{ (form.referral if form) or '' }}">
     </div>
 
     <button type="submit" class="btn btn-primary btn-lg">Submit Repair Request</button>

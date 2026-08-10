@@ -26,7 +26,10 @@
 <div class="card">
     <h3>Charges</h3>
     <table class="history-table">
-        <tr><td>Subtotal (incl. tax)</td><td>${{ "%.2f" | format(invoice.subtotal) }}</td></tr>
+        <tr><td>Repair cost</td><td>${{ "%.2f" | format(invoice.pre_tax or 0) }}</td></tr>
+        <tr><td>GST (5%)</td><td>${{ "%.2f" | format((invoice.pre_tax or 0) * 0.05) }}</td></tr>
+        <tr><td>PST (7%)</td><td>${{ "%.2f" | format((invoice.pre_tax or 0) * 0.07) }}</td></tr>
+        <tr><td>Subtotal</td><td>${{ "%.2f" | format(invoice.subtotal) }}</td></tr>
         {% if invoice.coins_applied > 0 %}
         <tr><td>Crucible Coin discount ({{ invoice.coins_applied | int }} coins)</td><td>-${{ "%.2f" | format(invoice.discount_amount) }}</td></tr>
         {% endif %}
@@ -39,10 +42,12 @@
     <h3>Actions</h3>
     <div class="status-form">
         <form method="POST" action="{{ url_for('invoice_send_sms', invoice_id=invoice.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn">Text Invoice to Customer</button>
         </form>
         {% if invoice.status != 'paid' %}
         <form method="POST" action="{{ url_for('invoice_mark_paid', invoice_id=invoice.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-primary">Mark as Paid</button>
         </form>
         {% endif %}

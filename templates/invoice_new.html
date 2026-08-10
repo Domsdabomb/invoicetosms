@@ -23,6 +23,7 @@
     <p><small>Max 25% of bill payable in coins.</small></p>
 
     <form method="POST" class="status-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="number" name="coins_to_apply" min="0" max="{{ max_coins | int }}" value="0" class="input" style="max-width: 150px;">
         <button type="submit" class="btn btn-primary">Generate Invoice</button>
     </form>

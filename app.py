@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
 from config import Config
 from models.database import get_db, close_db, init_db, VALID_STATUSES
 from services.sms import notify_customer
@@ -15,6 +16,19 @@ def create_app():
 
     with app.app_context():
         init_db()
+
+    @app.before_request
+    def csrf_protect():
+        if request.method == "POST":
+            token = session.get("csrf_token")
+            if not token or request.form.get("csrf_token") != token:
+                abort(403)
+
+    @app.context_processor
+    def inject_csrf():
+        if "csrf_token" not in session:
+            session["csrf_token"] = os.urandom(16).hex()
+        return {"csrf_token": session["csrf_token"]}
 
     # ── Auth ─────────────────────────────────────────────────────────
 
@@ -173,6 +187,15 @@ def create_app():
             return redirect(url_for("dashboard"))
 
         old_status = job["status"]
+        if new_status != "cancelled" and old_status not in ("completed", "cancelled"):
+            old_idx = VALID_STATUSES.index(old_status) if old_status in VALID_STATUSES else -1
+            new_idx = VALID_STATUSES.index(new_status)
+            if new_idx <= old_idx:
+                flash("Cannot move status backwards.", "error")
+                return redirect(url_for("job_detail", job_id=job_id))
+        if old_status in ("completed", "cancelled"):
+            flash("Cannot change status of a completed/cancelled job.", "error")
+            return redirect(url_for("job_detail", job_id=job_id))
         db.execute(
             "UPDATE repair_jobs SET status = ?, updated_at = ? WHERE id = ?",
             (new_status, datetime.now(), job_id),
@@ -367,6 +390,12 @@ def create_app():
     @app.route("/job/<int:job_id>/invoice/new", methods=["GET", "POST"])
     @login_required
     def new_invoice(job_id):
+        db = get_db()
+        existing = db.execute("SELECT id FROM invoices WHERE job_id = ?", (job_id,)).fetchone()
+        if existing:
+            flash("An invoice already exists for this job.", "error")
+            return redirect(url_for("invoice_detail", invoice_id=existing["id"]))
+
         if request.method == "POST":
             try:
                 coins = int(request.form.get("coins_to_apply", 0))
@@ -420,6 +449,14 @@ def create_app():
     @app.route("/invoice/<int:invoice_id>/mark-paid", methods=["POST"])
     @login_required
     def invoice_mark_paid(invoice_id):
+        db = get_db()
+        invoice = db.execute("SELECT status FROM invoices WHERE id = ?", (invoice_id,)).fetchone()
+        if not invoice:
+            flash("Invoice not found.", "error")
+            return redirect(url_for("invoices"))
+        if invoice["status"] == "paid":
+            flash("Invoice is already paid.", "error")
+            return redirect(url_for("invoice_detail", invoice_id=invoice_id))
         mark_paid(invoice_id)
         flash("Invoice marked as paid.", "success")
         return redirect(url_for("invoice_detail", invoice_id=invoice_id))
@@ -448,14 +485,16 @@ def create_app():
 
             if not all([name, phone, device_type, issue]):
                 flash("Please fill in all required fields.", "error")
-                return render_template("book.html")
+                return render_template("book.html", form=request.form)
 
             db = get_db()
             digits = "".join(c for c in phone if c.isdigit())
-            existing = db.execute(
-                "SELECT id FROM customers WHERE replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?",
-                (f"%{digits}%",),
-            ).fetchone()
+            existing = None
+            if len(digits) >= 7:
+                existing = db.execute(
+                    "SELECT id FROM customers WHERE replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?",
+                    (f"%{digits[-10:]}%",),
+                ).fetchone()
 
             if existing:
                 customer_id = existing["id"]
@@ -500,14 +539,22 @@ def create_app():
 
             if referral_code:
                 referrer_digits = "".join(c for c in referral_code if c.isdigit())
-                referrer = db.execute(
-                    "SELECT id FROM customers WHERE replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ? AND id != ?",
-                    (f"%{referrer_digits}%", customer_id),
-                ).fetchone()
+                referrer = None
+                if len(referrer_digits) >= 7:
+                    referrer = db.execute(
+                        "SELECT id FROM customers WHERE replace(replace(replace(replace(phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ? AND id != ?",
+                        (f"%{referrer_digits[-10:]}%", customer_id),
+                    ).fetchone()
                 if referrer:
-                    from services.wallet import add_coins, REFERRAL_BONUS_COINS
-                    add_coins(referrer["id"], REFERRAL_BONUS_COINS, f"Referral bonus — {name} booked Job #{job_id}", job_id=job_id)
-                    add_coins(customer_id, REFERRAL_BONUS_COINS, f"Referred by an existing customer — Job #{job_id}", job_id=job_id)
+                    from services.wallet import add_coins, REFERRAL_BONUS_COINS, get_wallet
+                    wallet = get_wallet(customer_id)
+                    already_referred = db.execute(
+                        "SELECT id FROM wallet_transactions WHERE wallet_id = ? AND reason LIKE 'Referred by%'",
+                        (wallet["id"],),
+                    ).fetchone()
+                    if not already_referred:
+                        add_coins(referrer["id"], REFERRAL_BONUS_COINS, f"Referral bonus — {name} booked Job #{job_id}", job_id=job_id)
+                        add_coins(customer_id, REFERRAL_BONUS_COINS, f"Referred by an existing customer — Job #{job_id}", job_id=job_id)
 
             db.commit()
             flash(f"Repair booked! Your job number is #{job_id}.", "success")
@@ -543,18 +590,22 @@ def create_app():
         if not phone:
             return redirect(url_for("track"))
 
-        # Normalize: strip spaces, dashes, parens for flexible matching
         digits = "".join(c for c in phone if c.isdigit())
+        if len(digits) < 7:
+            flash("Please enter at least 7 digits.", "error")
+            return redirect(url_for("track"))
+        match_digits = digits[-10:]
         db = get_db()
         jobs = db.execute(
             """
             SELECT r.*, c.phone
             FROM repair_jobs r
             JOIN customers c ON r.customer_id = c.id
-            WHERE replace(replace(replace(replace(c.phone, ' ', ''), '-', ''), '(', ''), ')', '') LIKE ?
+            WHERE substr(replace(replace(replace(replace(replace(c.phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), -10)
+                  = ?
             ORDER BY r.updated_at DESC
             """,
-            (f"%{digits}%",),
+            (match_digits,),
         ).fetchall()
         return render_template("track_result.html", jobs=jobs, phone=phone)
 
